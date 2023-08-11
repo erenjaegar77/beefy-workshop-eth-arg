@@ -25,33 +25,25 @@ const config: DeploymentConfig = {
       accounts: hardhatNetworkAccounts,
     },
     op: {
-      url: process.env.OPTIMISM_RPC || "https://rpc.ankr.com/optimism",
+      url: process.env.OP_RPC || "https://rpc.ankr.com/optimism",
       chainId: 10,
       accounts,
     },
+    localhost: {
+      url: "http://127.0.0.1:8545",
+      timeout: 300000,
+      accounts: "remote",
+    },
+  },
+  etherscan: {
+    apiKey: {
+      optimisticEthereum: process.env.OP_API_KEY!,
+    }
   },
   solidity: {
     compilers: [
       {
-        version: "0.8.15",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.6.12",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: "0.5.5",
+        version: "0.8.19",
         settings: {
           optimizer: {
             enabled: true,

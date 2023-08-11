@@ -3,5 +3,7 @@
 # Solidity
 /artifacts
 /cache
+/artifacts-forge
+/cache-forge
 # Env
 .env
