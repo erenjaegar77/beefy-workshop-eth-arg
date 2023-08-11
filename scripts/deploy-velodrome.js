@@ -1,10 +1,8 @@
-i
 import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
-import vaultV7 from './artifacts/contracts/vaults/BeefyVaultV7.sol/BeefyVaultV7.json'
-import vaultV7Factory from "./artifacts/contracts/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
-import stratAbi from "./artifacts/contracts/strategies/StrategyCommonVelodromeGaugeV2.sol/StrategyCommonVelodromeGaugeV2.json";
-
+import vaultV7 from '../artifacts/contracts/vaults/BeefyVaultV7.sol/BeefyVaultV7.json'
+import vaultV7Factory from "../artifacts/contracts/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
+import stratAbi from "../artifacts/contracts/strategies/StrategyCommonVelodromeGaugeV2.sol/StrategyCommonVelodromeGaugeV2.json";
 
 const {
   platforms: { velodrome, beefyfinance },
