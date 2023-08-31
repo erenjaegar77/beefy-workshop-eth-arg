@@ -29,6 +29,11 @@ const config: DeploymentConfig = {
       chainId: 10,
       accounts,
     },
+    base: {
+      url: process.env.BASE_RPC || "https://rpc.ankr.com/base",
+      chainId: 8453,
+      accounts,
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
       timeout: 300000,

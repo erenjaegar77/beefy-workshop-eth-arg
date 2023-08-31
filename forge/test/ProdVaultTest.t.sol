@@ -14,9 +14,8 @@ import {IERC20Like} from "./interfaces/IERC20Like.sol";
 import {VaultUser} from "./users/VaultUser.sol";
 
 contract ProdVaultTest is BaseTestHarness {
-
     // Input your vault to test here.
-    IVault constant vault = IVault(0x95E6623FEFbEFb1058BC2D96F3e0902C2421226a);
+    IVault constant vault = IVault(0xCbbB6d843C57f5FCE5774c13c7464bE9D2bbA424);
     IStrategy strategy;
 
     // Users
@@ -30,18 +29,26 @@ contract ProdVaultTest is BaseTestHarness {
     uint256 wantStartingAmount = 50 ether;
     uint256 delay = 1000 seconds; // Time to wait after depositing before harvesting.
 
-
     function setUp() public {
         want = IERC20Like(vault.want());
         strategy = IStrategy(vault.strategy());
-        
+
         user = new VaultUser();
 
         // Slot set is for performance speed up.
         if (slotSet) {
-            modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
+            modifyBalanceWithKnownSlot(
+                vault.want(),
+                address(user),
+                wantStartingAmount,
+                slot
+            );
         } else {
-            slot = modifyBalance(vault.want(), address(user), wantStartingAmount);
+            slot = modifyBalance(
+                vault.want(),
+                address(user),
+                wantStartingAmount
+            );
             slotSet = true;
         }
     }
@@ -50,7 +57,7 @@ contract ProdVaultTest is BaseTestHarness {
         _unpauseIfPaused();
 
         _depositIntoVault(user);
-        
+
         shift(100 seconds);
 
         console.log("Withdrawing all want from vault");
@@ -58,13 +65,21 @@ contract ProdVaultTest is BaseTestHarness {
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
         console.log("Final user want balance", wantBalanceFinal);
-        assertLe(wantBalanceFinal, wantStartingAmount, "Expected wantBalanceFinal <= wantStartingAmount");
-        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertLe(
+            wantBalanceFinal,
+            wantStartingAmount,
+            "Expected wantBalanceFinal <= wantStartingAmount"
+        );
+        assertGt(
+            wantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected wantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
     }
 
     function test_harvest() external {
         _unpauseIfPaused();
-        
+
         _depositIntoVault(user);
 
         uint256 vaultBalance = vault.balance();
@@ -91,16 +106,36 @@ contract ProdVaultTest is BaseTestHarness {
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
 
-        assertGt(vaultBalanceAfterHarvest, vaultBalance, "Expected vaultBalanceAfterHarvest > vaultBalance");
-        assertGt(pricePerFullShareAfterHarvest, pricePerFullShare, "Expected pricePerFullShareAfterHarvest > pricePerFullShare");
-        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
-        assertGt(lastHarvestAfterHarvest, lastHarvest, "Expected lastHarvestAfterHarvest > lastHarvest");
-        assertEq(lastHarvestAfterHarvest, timestampBeforeHarvest + delay, "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay");
+        assertGt(
+            vaultBalanceAfterHarvest,
+            vaultBalance,
+            "Expected vaultBalanceAfterHarvest > vaultBalance"
+        );
+        assertGt(
+            pricePerFullShareAfterHarvest,
+            pricePerFullShare,
+            "Expected pricePerFullShareAfterHarvest > pricePerFullShare"
+        );
+        assertGt(
+            wantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected wantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
+        assertGt(
+            lastHarvestAfterHarvest,
+            lastHarvest,
+            "Expected lastHarvestAfterHarvest > lastHarvest"
+        );
+        assertEq(
+            lastHarvestAfterHarvest,
+            timestampBeforeHarvest + delay,
+            "Expected lastHarvestAfterHarvest == timestampBeforeHarvest + delay"
+        );
     }
 
     function test_panic() external {
         _unpauseIfPaused();
-        
+
         _depositIntoVault(user);
 
         uint256 vaultBalance = vault.balance();
@@ -108,7 +143,7 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 balanceOfWant = strategy.balanceOfWant();
 
         assertGt(balanceOfPool, balanceOfWant);
-        
+
         console.log("Calling panic()");
         FORGE_VM.prank(keeper);
         strategy.panic();
@@ -117,36 +152,58 @@ contract ProdVaultTest is BaseTestHarness {
         uint256 balanceOfPoolAfterPanic = strategy.balanceOfPool();
         uint256 balanceOfWantAfterPanic = strategy.balanceOfWant();
 
-        assertGt(vaultBalanceAfterPanic, vaultBalance  * 99 / 100, "Expected vaultBalanceAfterPanic > vaultBalance");
-        assertGt(balanceOfWantAfterPanic, balanceOfPoolAfterPanic, "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic");
+        assertGt(
+            vaultBalanceAfterPanic,
+            (vaultBalance * 99) / 100,
+            "Expected vaultBalanceAfterPanic > vaultBalance"
+        );
+        assertGt(
+            balanceOfWantAfterPanic,
+            balanceOfPoolAfterPanic,
+            "Expected balanceOfWantAfterPanic > balanceOfPoolAfterPanic"
+        );
 
         console.log("Getting user more want.");
-        modifyBalanceWithKnownSlot(vault.want(), address(user), wantStartingAmount, slot);
+        modifyBalanceWithKnownSlot(
+            vault.want(),
+            address(user),
+            wantStartingAmount,
+            slot
+        );
         console.log("Approving more want.");
         user.approve(address(want), address(vault), wantStartingAmount);
-        
+
         // Users can't deposit.
         console.log("Trying to deposit while panicked.");
         FORGE_VM.expectRevert("Pausable: paused");
         user.depositAll(vault);
-        
+
         // User can still withdraw
         console.log("User withdraws all.");
         user.withdrawAll(vault);
 
         uint256 wantBalanceFinal = want.balanceOf(address(user));
-        assertGt(wantBalanceFinal, wantStartingAmount * 99 / 100, "Expected wantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGt(
+            wantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected wantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
     }
 
     function test_multipleUsers() external {
         _unpauseIfPaused();
-        
+
         _depositIntoVault(user);
 
         // Setup second user.
         VaultUser user2 = new VaultUser();
         console.log("Getting want for user2.");
-        modifyBalanceWithKnownSlot(address(want), address(user2), wantStartingAmount, slot);
+        modifyBalanceWithKnownSlot(
+            address(want),
+            address(user2),
+            wantStartingAmount,
+            slot
+        );
 
         uint256 pricePerFullShare = vault.getPricePerFullShare();
 
@@ -154,8 +211,9 @@ contract ProdVaultTest is BaseTestHarness {
 
         console.log("User2 depositAll.");
         _depositIntoVault(user2);
-        
-        uint256 pricePerFullShareAfterUser2Deposit = vault.getPricePerFullShare();
+
+        uint256 pricePerFullShareAfterUser2Deposit = vault
+            .getPricePerFullShare();
 
         shift(delay);
 
@@ -163,11 +221,24 @@ contract ProdVaultTest is BaseTestHarness {
         user.withdrawAll(vault);
 
         uint256 user1WantBalanceFinal = want.balanceOf(address(user));
-        uint256 pricePerFullShareAfterUser1Withdraw = vault.getPricePerFullShare();
+        uint256 pricePerFullShareAfterUser1Withdraw = vault
+            .getPricePerFullShare();
 
-        assertGe(pricePerFullShareAfterUser2Deposit, pricePerFullShare, "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare");
-        assertGe(pricePerFullShareAfterUser1Withdraw, pricePerFullShareAfterUser2Deposit, "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit");
-        assertGt(user1WantBalanceFinal, wantStartingAmount * 99 / 100, "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100");
+        assertGe(
+            pricePerFullShareAfterUser2Deposit,
+            pricePerFullShare,
+            "Expected pricePerFullShareAfterUser2Deposit >= pricePerFullShare"
+        );
+        assertGe(
+            pricePerFullShareAfterUser1Withdraw,
+            pricePerFullShareAfterUser2Deposit,
+            "Expected pricePerFullShareAfterUser1Withdraw >= pricePerFullShareAfterUser2Deposit"
+        );
+        assertGt(
+            user1WantBalanceFinal,
+            (wantStartingAmount * 99) / 100,
+            "Expected user1WantBalanceFinal > wantStartingAmount * 99 / 100"
+        );
     }
 
     /*         */
