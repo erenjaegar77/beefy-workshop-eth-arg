@@ -2,25 +2,33 @@ import hardhat, { ethers, web3 } from "hardhat";
 import { addressBook } from "blockchain-addressbook";
 import vaultV7 from "../artifacts/contracts/vaults/BeefyVaultV7.sol/BeefyVaultV7.json";
 import vaultV7Factory from "../artifacts/contracts/vaults/BeefyVaultV7Factory.sol/BeefyVaultV7Factory.json";
-import stratAbi from "../artifacts/contracts/strategies/StrategyCommonVelodromeGaugeV2.sol/StrategyCommonVelodromeGaugeV2.json";
+import stratAbi from "../artifacts/contracts/strategies/StrategyVelodromeGaugeV2.sol/StrategyVelodromeGaugeV2.json";
 
 const {
   platforms: { aerodrome, beefyfinance },
   tokens: {
     AERO: { address: AERO },
     ETH: { address: ETH },
-    USDbC: { address: USDbC },
+    USDC: { address: USDC },
   },
 } = addressBook.base;
 
 const zero = "0x0000000000000000000000000000000000000000";
 
-const want = web3.utils.toChecksumAddress("0x2223F9FE624F69Da4D8256A7bCc9104FBA7F8f75");
-const gauge = web3.utils.toChecksumAddress("0x9a202c932453fB3d04003979B121E80e5A14eE7b");
+const want = web3.utils.toChecksumAddress(
+  "0x2a1463CeBE85315224c536AfD389b381B43F3206"
+);
+const gauge = web3.utils.toChecksumAddress(
+  "0x9280df579CeA690cAf5c31601cb71564Bb6FA6B7"
+);
+
+const MAI = web3.utils.toChecksumAddress(
+  "0xbf1aeA8670D2528E08334083616dD9C5F3B087aE"
+);
 
 const vaultParams = {
-  mooName: "Moo Aero AERO-USDbC",
-  mooSymbol: "mooAeroAERO-USDbC",
+  mooName: "Moo Aero USDC-MAI",
+  mooSymbol: "mooAeroUSDC-MAI",
   delay: 21600,
 };
 
@@ -33,13 +41,17 @@ const strategyParams = {
   beefyFeeRecipient: beefyfinance.beefyFeeRecipient,
   feeConfig: beefyfinance.beefyFeeConfig,
   outputToNativeRoute: [
-    [AERO, USDbC, false, zero],
-    [USDbC, ETH, false, zero],
+    [AERO, USDC, false, zero],
+    [USDC, ETH, false, zero],
   ],
-  outputToLp0Route: [[AERO, AERO, false, zero]],
-  outputToLp1Route: [[AERO, USDbC, false, zero]],
+  outputToLp0Route: [[AERO, USDC, false, zero]],
+  outputToLp1Route: [
+    [AERO, USDC, false, zero],
+    [USDC, MAI, false, zero],
+  ],
   beefyVaultProxy: beefyfinance.vaultFactory,
-  strategyImplementation: "0x13aD51a6664973EbD0749a7c84939d973F247921",
+  strategyImplementation: "0x4A9E42102d11f6c0A59d77722887E6A104C53636",
+  beefySwapper: "0x9F8c6a094434C6E6f5F2792088Bb4d2D5971DdCc",
 };
 
 async function main() {
@@ -127,6 +139,7 @@ async function main() {
     strategyParams.outputToNativeRoute,
     strategyParams.outputToLp0Route,
     strategyParams.outputToLp1Route,
+    strategyParams.beefySwapper,
   ];
 
   const abi = stratAbi.abi;

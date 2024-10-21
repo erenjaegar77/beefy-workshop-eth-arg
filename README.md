@@ -1,6 +1,4 @@
-
 # Ethereum Argentina Workshop
-
 
 ## Requirements
 
@@ -10,16 +8,18 @@
 
 [git](https://git-scm.com/)
 
-
-
 ### 1- Fork the repos
 
 #### Script
+
 ```sh
 git clone https://github.com/erenjaegar77/beefy-workshop-eth-arg.git
 ```
+
 #### APP
+
 NODE Version 16.12.0
+
 ```sh
 git clone https://github.com/beefyfinance/beefy-v2.git
 ```
@@ -27,41 +27,39 @@ git clone https://github.com/beefyfinance/beefy-v2.git
 #### API
 
 NODE Version 20.5.0
+
 ```sh
 git clone https://github.com/beefyfinance/beefy-api.git
 ```
 
-### 2- Instal dependencies in all repos 
+### 2- Instal dependencies in all repos
 
 ```sh
 yarn install
 ```
 
-
 ### STEPS
 
-
 **Deploy Script**
+
 1. Import from addressbook the platform and tokens
 
 2. Update Vault Params
 
 3. Update Strategy Params
 
-
 **Automated testing**
 
-1. run ```yarn installForge```
-2. open new terminal to fork optimism(or choosed chain) with ```yarn fork https://rpc.ankr.com/optimism/```
-3. deploy the vault/strat on the local host with ```yarn deploy``` localhost
-4. copy the vault address and paste on the line 19 on `ProdVaultTest.t.sol` 
-5. test the strart with ```yarn forgeTest:vault``` 
+1. run `yarn installForge`
+2. open new terminal to fork optimism(or choosed chain) with `yarn fork https://rpc.ankr.com/optimism/`
+3. deploy the vault/strat on the local host with `yarn deploy localhost`
+4. copy the vault address and paste on the line 19 on `ProdVaultTest.t.sol`
+5. test the strart with `yarn forgeTest:vault`
 6. deploy to mainnet
-
 
 **Manual Testing Is Required for All Live Vaults**
 
-1. Give vault approval to spend your want tokens. 
+1. Give vault approval to spend your want tokens.
 2. Deposit a small amount to test deposit functionality.
 3. Withdraw, to test withdraw functionality.
 4. Deposit a larger amount wait 30 seconds to a minute and harvest. Check harvest transaction to make sure things are going to the right places.

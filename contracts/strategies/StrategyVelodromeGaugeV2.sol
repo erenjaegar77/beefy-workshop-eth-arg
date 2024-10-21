@@ -9,13 +9,10 @@ import "../interfaces/common/ISolidlyRouter.sol";
 import "../interfaces/common/ISolidlyPair.sol";
 import "../interfaces/common/IVelodromeGauge.sol";
 import "../interfaces/common/IERC20Extended.sol";
+import "../interfaces/beefy/IBeefySwapper.sol";
 import "./StratFeeManagerInitializable.sol";
-import "../utils/GasFeeThrottler.sol";
 
-contract StrategyCommonVelodromeGaugeV2 is
-    StratFeeManagerInitializable,
-    GasFeeThrottler
-{
+contract StrategyVelodromeGaugeV2 is StratFeeManagerInitializable {
     using SafeERC20 for IERC20;
 
     // Tokens used
@@ -28,6 +25,7 @@ contract StrategyCommonVelodromeGaugeV2 is
     // Third party contracts
     address public gauge;
     address public factory;
+    address public beefySwapper;
 
     bool public stable;
     bool public harvestOnDeposit;
@@ -49,18 +47,21 @@ contract StrategyCommonVelodromeGaugeV2 is
         uint256 beefyFees,
         uint256 strategistFees
     );
+    event SetBeefySwapper(address newSwapper);
 
     function initialize(
         address _want,
         address _gauge,
+        address _beefySwapper,
         CommonAddresses calldata _commonAddresses,
         ISolidlyRouter.Route[] calldata _outputToNativeRoute,
         ISolidlyRouter.Route[] calldata _outputToLp0Route,
         ISolidlyRouter.Route[] calldata _outputToLp1Route
-    ) public initializer {
+    ) external initializer {
         __StratFeeManager_init(_commonAddresses);
         want = _want;
         gauge = _gauge;
+        beefySwapper = _beefySwapper;
 
         factory = ISolidlyRouter(unirouter).defaultFactory();
         stable = ISolidlyPair(want).stable();
@@ -79,8 +80,8 @@ contract StrategyCommonVelodromeGaugeV2 is
 
         output = outputToNativeRoute[0].from;
         native = outputToNativeRoute[outputToNativeRoute.length - 1].to;
-        lpToken0 = outputToLp0Route[outputToLp0Route.length - 1].to;
-        lpToken1 = outputToLp1Route[outputToLp1Route.length - 1].to;
+        lpToken0 = ISolidlyPair(want).token0();
+        lpToken1 = ISolidlyPair(want).token1();
 
         _giveAllowances();
     }
@@ -127,16 +128,12 @@ contract StrategyCommonVelodromeGaugeV2 is
         }
     }
 
-    function harvest() external virtual gasThrottle {
+    function harvest() external virtual {
         _harvest(tx.origin);
     }
 
-    function harvest(address callFeeRecipient) external virtual gasThrottle {
+    function harvest(address callFeeRecipient) external virtual {
         _harvest(callFeeRecipient);
-    }
-
-    function managerHarvest() external onlyManager {
-        _harvest(tx.origin);
     }
 
     // compounds earnings and charges performance fee
@@ -159,13 +156,21 @@ contract StrategyCommonVelodromeGaugeV2 is
         IFeeConfig.FeeCategory memory fees = getFees();
         uint256 toNative = (IERC20(output).balanceOf(address(this)) *
             fees.total) / DIVISOR;
-        ISolidlyRouter(unirouter).swapExactTokensForTokens(
-            toNative,
-            0,
-            outputToNativeRoute,
-            address(this),
-            block.timestamp
+        (address router, , , , ) = IBeefySwapper(beefySwapper).swapInfo(
+            output,
+            native
         );
+        if (router != address(0)) {
+            IBeefySwapper(beefySwapper).swap(output, native, toNative);
+        } else {
+            ISolidlyRouter(unirouter).swapExactTokensForTokens(
+                toNative,
+                0,
+                outputToNativeRoute,
+                address(this),
+                block.timestamp
+            );
+        }
 
         uint256 nativeBal = IERC20(native).balanceOf(address(this));
 
@@ -219,23 +224,39 @@ contract StrategyCommonVelodromeGaugeV2 is
         }
 
         if (lpToken0 != output) {
-            ISolidlyRouter(unirouter).swapExactTokensForTokens(
-                lp0Amt,
-                0,
-                outputToLp0Route,
-                address(this),
-                block.timestamp
+            (address router, , , , ) = IBeefySwapper(beefySwapper).swapInfo(
+                output,
+                lpToken0
             );
+            if (router != address(0)) {
+                IBeefySwapper(beefySwapper).swap(output, lpToken0, lp0Amt);
+            } else {
+                ISolidlyRouter(unirouter).swapExactTokensForTokens(
+                    lp0Amt,
+                    0,
+                    outputToLp0Route,
+                    address(this),
+                    block.timestamp
+                );
+            }
         }
 
         if (lpToken1 != output) {
-            ISolidlyRouter(unirouter).swapExactTokensForTokens(
-                lp1Amt,
-                0,
-                outputToLp1Route,
-                address(this),
-                block.timestamp
+            (address router, , , , ) = IBeefySwapper(beefySwapper).swapInfo(
+                output,
+                lpToken1
             );
+            if (router != address(0)) {
+                IBeefySwapper(beefySwapper).swap(output, lpToken1, lp1Amt);
+            } else {
+                ISolidlyRouter(unirouter).swapExactTokensForTokens(
+                    lp1Amt,
+                    0,
+                    outputToLp1Route,
+                    address(this),
+                    block.timestamp
+                );
+            }
         }
 
         uint256 lp0Bal = IERC20(lpToken0).balanceOf(address(this));
@@ -298,12 +319,6 @@ contract StrategyCommonVelodromeGaugeV2 is
         }
     }
 
-    function setShouldGasThrottle(
-        bool _shouldGasThrottle
-    ) external onlyManager {
-        shouldGasThrottle = _shouldGasThrottle;
-    }
-
     // called as part of strat migration. Sends all the available funds back to the vault.
     function retireStrat() external {
         require(msg.sender == vault, "!vault");
@@ -337,6 +352,7 @@ contract StrategyCommonVelodromeGaugeV2 is
     function _giveAllowances() internal {
         IERC20(want).safeApprove(gauge, type(uint).max);
         IERC20(output).safeApprove(unirouter, type(uint).max);
+        IERC20(output).safeApprove(beefySwapper, type(uint).max);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken0).safeApprove(unirouter, type(uint).max);
@@ -348,6 +364,7 @@ contract StrategyCommonVelodromeGaugeV2 is
     function _removeAllowances() internal {
         IERC20(want).safeApprove(gauge, 0);
         IERC20(output).safeApprove(unirouter, 0);
+        IERC20(output).safeApprove(beefySwapper, 0);
 
         IERC20(lpToken0).safeApprove(unirouter, 0);
         IERC20(lpToken1).safeApprove(unirouter, 0);
@@ -377,5 +394,12 @@ contract StrategyCommonVelodromeGaugeV2 is
     function outputToLp1() external view returns (address[] memory) {
         ISolidlyRouter.Route[] memory _route = outputToLp1Route;
         return _solidlyToRoute(_route);
+    }
+
+    function setBeefySwapper(address _beefySwapper) external onlyManager {
+        IERC20(output).safeApprove(beefySwapper, 0);
+        beefySwapper = _beefySwapper;
+        if (!paused()) IERC20(output).safeApprove(beefySwapper, type(uint).max);
+        emit SetBeefySwapper(_beefySwapper);
     }
 }

@@ -3,7 +3,7 @@ const hardhat = require("hardhat");
 const ethers = hardhat.ethers;
 
 const config = {
-  name: "StrategyCommonVelodromeGaugeV2",
+  name: "StrategyVelodromeGaugeV2",
   verify: false
 };
 
